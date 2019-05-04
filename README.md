@@ -1,6 +1,6 @@
 # style-transfer-pytorchd
 This repository is a deep-running part of a program that changes the style of a photo. And I refer to the following paper.  
-<p>[A reference article]  (https://arxiv.org/abs/1712.07168)</p>
+<p>[A reference article]  (https://arxiv.org/abs/1508.06576)</p>
 
 ## The current work is in progress and the code is not complete.
 
