@@ -7,23 +7,16 @@ from torch.utils.data.dataset import random_split
 
 
 class Dataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, image_size, style):
+    def __init__(self, data_dir, image_size):
         self.data_dir = data_dir
         self.image_size = image_size
-        self.style = style
-
         if not os.path.exists(self.data_dir):
             raise Exception(" [!] {}  not exists.".format(self.data_dir))
 
-        self.images = []
-        self.image_dir = os.path.join(self.data_dir, self.style)
-
-        for name in os.listdir(self.image_dir):
-            for path in glob.glob(os.path.join(self.image_dir, name, '*')):
-                self.images.append((path, self.style))
+        self.images = glob.glob(os.path.join(self.data_dir, "*.*"))
 
     def __getitem__(self, item):
-        path, label = self.images[item]
+        path = self.images[item]
 
         image = Image.open(path).convert('RGB')
 
@@ -34,7 +27,7 @@ class Dataset(torch.utils.data.Dataset):
             transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])
 
-        return transform(image), label
+        return transform(image)
 
     def __len__(self):
         return len(self.images)

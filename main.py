@@ -9,21 +9,21 @@ def main(config):
     if config.checkpoint_dir is None:
         config.checkpoint_dir = 'checkpoints'
 
-    if not os.path.exists(config.checkpoint_dir):
-        os.makedirs(config.checkpoint_dir)
+    if not os.path.exists(os.path.join(config.checkpoint_dir, config.style_image_name)):
+        os.makedirs(os.path.join(config.checkpoint_dir, config.style_image_name))
 
-    if not os.path.exists(config.sample_dir):
-        os.makedirs(config.sample_dir)
+    if not os.path.exists(os.path.join(config.sample_dir, config.style_image_name)):
+        os.makedirs(os.path.join(config.sample_dir, config.style_image_name))
 
     print(f"photo to {config.style_dir} style transfer using cnn")
 
-    data_loader, val_data_loader = get_loader(config.from_style, config.to_style, config.batch_size
-                                              , config.sample_batch_size)
+    data_loader, val_data_loader = get_loader(config.data_path, config.image_size
+                                              , config.batch_size, config.sample_batch_size)
     trainer = Trainer(config, data_loader)
     trainer.train()
 
-    tester = Tester(config, val_data_loader)
-    tester.test()
+    # tester = Tester(config, val_data_loader)
+    # tester.test()
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ from glob import glob
 from torch.optim.adam import Adam
 import torch.nn as nn
 from torchvision import transforms
+from torchvision.utils import save_image
 from util.util import load_image, gram_matrix
 
 
@@ -24,6 +25,7 @@ class Trainer:
         self.style_image_name = config.style_image_name
         self.style_dir = config.style_dir
         self.batch_size = config.batch_size
+        self.sample_dir = config.sample_dir
 
         self.build_model()
         self.load_feature_style()
@@ -33,40 +35,46 @@ class Trainer:
         optimizer = Adam(self.transfer_net.parameters(), lr=self.lr)
         loss = nn.MSELoss()
         self.transfer_net.train()
+        self.vgg.eval()
 
         for epoch in range(self.epoch, self.num_epoch):
+            if not os.path.exists(os.path.join(self.sample_dir, self.style_image_name, f"{epoch}")):
+                os.makedirs(os.path.join(self.sample_dir, self.style_image_name, f"{epoch}"))
             for step, image in enumerate(self.data_loader):
+
+                optimizer.zero_grad()
                 image = image.to(self.device)
                 transformed_image = self.transfer_net(image)
 
                 image_feature = self.vgg(image)
                 transformed_image_feature = self.vgg(transformed_image)
 
-                content_loss = self.content_weight*loss(image_feature, transformed_image_feature)
+                content_loss = self.content_weight*loss(image_feature.relu2_2, transformed_image_feature.relu2_2)
 
                 style_loss = 0
                 for ft_y, gm_s in zip(transformed_image_feature, self.gram_style):
                     gm_y = gram_matrix(ft_y)
-                    style_loss += load_image(gm_y, gm_s[:self.batch_size, :, :])
+                    style_loss += loss(gm_y, gm_s[:self.batch_size, :, :])
                 style_loss *= self.style_weight
 
                 total_loss = content_loss + style_loss
 
-                optimizer.zero_grad()
-                total_loss.backward()
+                total_loss.backward(retain_graph=True)
                 optimizer.step()
 
                 if step % 10 == 0:
                     print(f"[Epoch {epoch}/{self.num_epoch}] [Batch {step}/{total_step}] "
-                          f"[Style loss: {style_loss.item()}] [Content loss loss: {content_loss.item()}]")
-            torch.save(self.transfer_net.state_dict(), os.path.join(self.checkpoint_dir, f"TransferNet_{epoch}.pth"))
+                          f"[Style loss: {style_loss.item():.4}] [Content loss loss: {content_loss.item():.4}]")
+                    if step % 100 == 0:
+                        save_image(transformed_image, os.path.join(self.sample_dir, self.style_image_name, f"{epoch}", f"{step}.png"), normalize=False)
+
+            torch.save(self.transfer_net.state_dict(), os.path.join(self.checkpoint_dir, self.style_image_name, f"TransferNet_{epoch}.pth"))
 
     def build_model(self):
         self.transfer_net = TransferNet(self.num_residual)
         self.transfer_net.apply(self.weights_init)
         self.transfer_net.to(self.device)
         self.vgg = VGG16(requires_grad=True)
-        self.vgg.apply(self.weights_init)
         self.vgg.to(self.device)
         self.load_model()
 
@@ -79,10 +87,10 @@ class Trainer:
             print(f"[!] No checkpoint in {self.checkpoint_dir}")
             return
 
-        transfer_net = glob(os.path.join(self.checkpoint_dir, f'TransferNet_{self.epoch}.pth'))
+        transfer_net = glob(os.path.join(self.checkpoint_dir, self.style_image_name, f'TransferNet_{self.epoch - 1}.pth'))
 
         if not transfer_net:
-            print(f"[!] No checkpoint in epoch {self.epoch}")
+            print(f"[!] No checkpoint in epoch {self.epoch - 1}")
             return
 
         self.transfer_net.load_state_dict(torch.load(transfer_net[0]))
@@ -90,10 +98,14 @@ class Trainer:
     def load_feature_style(self):
         if not os.path.exists(self.style_dir):
             os.makedirs(self.style_dir)
-        if not os.listdir(os.path.join(self.style_dir, self.style_image_name)):
+        if not os.listdir(self.style_dir):
             raise Exception(f"[!] No image for style transfer")
 
-        image = load_image(os.path.join(self.style_dir, self.style_image_name), size=self.image_size)
+        image_name = glob(os.path.join(self.style_dir, f"{self.style_image_name}.*"))
+        if not image_name:
+            raise Exception(f"[!] No image for {self.style_image_name} transfer")
+
+        image = load_image(image_name[0], size=self.image_size)
         image = transforms.Compose([
             transforms.CenterCrop(min(image.size[0], image.size[1])),
             transforms.Resize(self.image_size),
@@ -105,7 +117,7 @@ class Trainer:
         style_image = self.vgg(image)
         self.gram_style = [gram_matrix(y) for y in style_image]
 
-    def weights_init(m):
+    def weights_init(self, m):
         classname = m.__class__.__name__
         if classname.find('Conv') != -1:
             m.weight.data.normal_(0.0, 0.02)

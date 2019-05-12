@@ -4,7 +4,7 @@ import PIL.Image
 def load_image(file_name, size=None):
     image = PIL.Image.open(file_name)
     if size is not None:
-        Image = image.resize((size, size), image.ANTIALIAS)
+        Image = image.resize((size, size))
     return image
 
 def gram_matrix(y):

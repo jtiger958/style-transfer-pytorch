@@ -1,11 +1,10 @@
 from collections import namedtuple
 
-import torch
-import torch.nn as nn
+import torch.nn
 from torchvision import models
 
 
-class VGG16(nn.Module):
+class VGG16(torch.nn.Module):
     def __init__(self, requires_grad=False):
         super(VGG16, self).__init__()
         vgg_pretrained_features = models.vgg16(pretrained=True).features
@@ -23,7 +22,7 @@ class VGG16(nn.Module):
             self.slice4.add_module(str(x), vgg_pretrained_features[x])
         if not requires_grad:
             for param in self.parameters():
-                param.requires_grad = False
+                param.requires_grad = True
 
     def forward(self, x):
         h = self.slice1(x)

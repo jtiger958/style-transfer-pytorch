@@ -22,12 +22,13 @@ class TransferNet(nn.Module):
                            nn.InstanceNorm2d(out_channels, affine=True)]
             in_channels = out_channels
 
-        for i in num_residual:
+        for i in range(num_residual):
             self.residual_model += [ResidualNetwork(out_channels)]
 
         for layer in expand_cfg:
             out_channels = layer
             self.expand_model += [nn.ConvTranspose2d(in_channels=in_channels, out_channels=out_channels, kernel_size=3, stride=1)]
+            in_channels = out_channels
 
         self.upsample_model = nn.Sequential(*self.upsample_model)
         self.residual_model = nn.Sequential(*self.residual_model)
@@ -45,9 +46,11 @@ class ResidualNetwork(nn.Module):
         super(ResidualNetwork, self).__init__()
         block = []
         for i in range(2):
-            block += [nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, stride=1),
-                           nn.InstanceNorm2d(channels),
-                           nn.ReLU()]
+            block += [
+                nn.ReflectionPad2d(1),
+                nn.Conv2d(in_channels=channels, out_channels=channels, kernel_size=3, stride=1),
+                nn.InstanceNorm2d(channels),
+                nn.ReLU()]
         self.model = nn.Sequential(*(block[:-1]))
         self.relu = nn.ReLU(inplace=True)
 
