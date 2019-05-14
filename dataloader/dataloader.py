@@ -23,8 +23,7 @@ class Dataset(torch.utils.data.Dataset):
         transform = transforms.Compose([
             transforms.CenterCrop(min(image.size[0], image.size[1])),
             transforms.Resize(self.image_size),
-            transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
+            transforms.ToTensor()
         ])
 
         return transform(image)

@@ -110,7 +110,6 @@ class Trainer:
             transforms.CenterCrop(min(image.size[0], image.size[1])),
             transforms.Resize(self.image_size),
             transforms.ToTensor(),
-            transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))
         ])(image)
         image = image.repeat(self.batch_size, 1, 1, 1)
         image = image.to(self.device)
