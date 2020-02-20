@@ -1,4 +1,4 @@
-from util.util import load_image
+from utils.utils import load_image
 import torch
 from model.transfer_net import TransferNet
 import os

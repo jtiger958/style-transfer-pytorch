@@ -4,7 +4,7 @@ import torch.nn as nn
 
 
 class TransferNet(nn.Module):
-    def __init__(self, num_residual):
+    def __init__(self, num_residual=5):
         super(TransferNet, self).__init__()
 
         in_channels = 3

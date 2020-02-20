@@ -7,7 +7,7 @@ from torch.optim.adam import Adam
 import torch.nn as nn
 from torchvision import transforms
 from torchvision.utils import save_image
-from util.util import load_image, gram_matrix
+from utils.utils import load_image, gram_matrix
 
 
 class Trainer:
@@ -26,6 +26,7 @@ class Trainer:
         self.style_dir = config.style_dir
         self.batch_size = config.batch_size
         self.sample_dir = config.sample_dir
+        self.decay_epoch = config.decay_epoch
 
         self.build_model()
         self.load_feature_style()
@@ -33,7 +34,9 @@ class Trainer:
     def train(self):
         total_step = len(self.data_loader)
         optimizer = Adam(self.transfer_net.parameters(), lr=self.lr)
-        loss = nn.MSELoss()
+        lr_scheduler = torch.optim.lr_scheduler.StepLR(optimizer, self.decay_epoch, 0.5)
+        content_criterion = nn.MSELoss()
+        stlye_criterion = nn.MSELoss()
         self.transfer_net.train()
         self.vgg.eval()
 
@@ -49,12 +52,12 @@ class Trainer:
                 image_feature = self.vgg(image)
                 transformed_image_feature = self.vgg(transformed_image)
 
-                content_loss = self.content_weight*loss(image_feature.relu2_2, transformed_image_feature.relu2_2)
+                content_loss = self.content_weight*content_criterion(image_feature.relu2_2, transformed_image_feature.relu2_2)
 
                 style_loss = 0
                 for ft_y, gm_s in zip(transformed_image_feature, self.gram_style):
                     gm_y = gram_matrix(ft_y)
-                    style_loss += loss(gm_y, gm_s[:self.batch_size, :, :])
+                    style_loss += stlye_criterion(gm_y, gm_s[:self.batch_size, :, :])
                 style_loss *= self.style_weight
 
                 total_loss = content_loss + style_loss
@@ -66,15 +69,17 @@ class Trainer:
                     print(f"[Epoch {epoch}/{self.num_epoch}] [Batch {step}/{total_step}] "
                           f"[Style loss: {style_loss.item():.4}] [Content loss loss: {content_loss.item():.4}]")
                     if step % 100 == 0:
-                        save_image(transformed_image, os.path.join(self.sample_dir, self.style_image_name, f"{epoch}", f"{step}.png"), normalize=False)
+                        image = torch.cat((image, transformed_image), dim=2)
+                        save_image(image, os.path.join(self.sample_dir, self.style_image_name, f"{epoch}", f"{step}.png"), normalize=False)
 
             torch.save(self.transfer_net.state_dict(), os.path.join(self.checkpoint_dir, self.style_image_name, f"TransferNet_{epoch}.pth"))
+            lr_scheduler.step()
 
     def build_model(self):
         self.transfer_net = TransferNet(self.num_residual)
         self.transfer_net.apply(self.weights_init)
         self.transfer_net.to(self.device)
-        self.vgg = VGG16(requires_grad=True)
+        self.vgg = VGG16(requires_grad=False)
         self.vgg.to(self.device)
         self.load_model()
 
