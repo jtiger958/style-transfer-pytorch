@@ -1,4 +1,4 @@
-# style-transfer-pytorchd
+## neural-style-transfer-pytorch
 This repository is a deep-running part of a program that changes the style of a photo. And I refer to the following paper.  
 <p>[A reference article]  (https://arxiv.org/abs/1508.06576)</p>
 
